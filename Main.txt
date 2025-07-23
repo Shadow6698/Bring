@@ -1,0 +1,422 @@
+-- Script para Roblox - GUI de Teleporte Futurística (LocalScript)
+-- Cole este script em StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Variáveis globais
+local originalPosition = nil
+local spinning = false
+local spinConnection = nil
+local bringActive = false
+
+-- Função para criar a GUI
+local function createGUI()
+    -- ScreenGui principal
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "TeleportGUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.Parent = playerGui
+
+    -- Frame principal
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 320, 0, 200)
+    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -100)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+
+    -- Corner arredondado
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = mainFrame
+
+    -- Sombra
+    local shadow = Instance.new("Frame")
+    shadow.Name = "Shadow"
+    shadow.Size = UDim2.new(1, 6, 1, 6)
+    shadow.Position = UDim2.new(0, -3, 0, 3)
+    shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.BackgroundTransparency = 0.7
+    shadow.BorderSizePixel = 0
+    shadow.ZIndex = mainFrame.ZIndex - 1
+    shadow.Parent = mainFrame
+
+    local shadowCorner = Instance.new("UICorner")
+    shadowCorner.CornerRadius = UDim.new(0, 12)
+    shadowCorner.Parent = shadow
+
+    -- Barra superior
+    local topBar = Instance.new("Frame")
+    topBar.Name = "TopBar"
+    topBar.Size = UDim2.new(1, 0, 0, 35)
+    topBar.Position = UDim2.new(0, 0, 0, 0)
+    topBar.BackgroundColor3 = Color3.fromRGB(45, 55, 70)
+    topBar.BorderSizePixel = 0
+    topBar.Parent = mainFrame
+
+    local topBarCorner = Instance.new("UICorner")
+    topBarCorner.CornerRadius = UDim.new(0, 12)
+    topBarCorner.Parent = topBar
+
+    -- Título
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -20, 1, 0)
+    title.Position = UDim2.new(0, 10, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "TELEPORT SYSTEM"
+    title.TextColor3 = Color3.fromRGB(220, 225, 235)
+    title.TextSize = 16
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = topBar
+
+    -- Ícone
+    local icon = Instance.new("TextLabel")
+    icon.Name = "Icon"
+    icon.Size = UDim2.new(0, 25, 0, 25)
+    icon.Position = UDim2.new(1, -30, 0, 5)
+    icon.BackgroundTransparency = 1
+    icon.Text = "⚡"
+    icon.TextColor3 = Color3.fromRGB(100, 150, 255)
+    icon.TextSize = 18
+    icon.Font = Enum.Font.GothamBold
+    icon.Parent = topBar
+
+    -- Label do nickname
+    local nickLabel = Instance.new("TextLabel")
+    nickLabel.Name = "NickLabel"
+    nickLabel.Size = UDim2.new(1, -20, 0, 20)
+    nickLabel.Position = UDim2.new(0, 10, 0, 45)
+    nickLabel.BackgroundTransparency = 1
+    nickLabel.Text = "Nickname do Player:"
+    nickLabel.TextColor3 = Color3.fromRGB(180, 185, 195)
+    nickLabel.TextSize = 12
+    nickLabel.Font = Enum.Font.Gotham
+    nickLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nickLabel.Parent = mainFrame
+
+    -- TextBox para o nickname
+    local nickTextBox = Instance.new("TextBox")
+    nickTextBox.Name = "NickTextBox"
+    nickTextBox.Size = UDim2.new(1, -20, 0, 35)
+    nickTextBox.Position = UDim2.new(0, 10, 0, 70)
+    nickTextBox.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
+    nickTextBox.BorderSizePixel = 0
+    nickTextBox.Text = ""
+    nickTextBox.PlaceholderText = "Digite o nome..."
+    nickTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nickTextBox.PlaceholderColor3 = Color3.fromRGB(120, 125, 135)
+    nickTextBox.TextSize = 14
+    nickTextBox.Font = Enum.Font.Gotham
+    nickTextBox.ClearTextOnFocus = false
+    nickTextBox.Parent = mainFrame
+
+    local textBoxCorner = Instance.new("UICorner")
+    textBoxCorner.CornerRadius = UDim.new(0, 6)
+    textBoxCorner.Parent = nickTextBox
+
+    -- Status Label
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Name = "StatusLabel"
+    statusLabel.Size = UDim2.new(1, -20, 0, 18)
+    statusLabel.Position = UDim2.new(0, 10, 0, 115)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "Pronto para teleportar"
+    statusLabel.TextColor3 = Color3.fromRGB(100, 200, 100)
+    statusLabel.TextSize = 11
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.Parent = mainFrame
+
+    -- Botão Bring
+    local bringButton = Instance.new("TextButton")
+    bringButton.Name = "BringButton"
+    bringButton.Size = UDim2.new(1, -20, 0, 40)
+    bringButton.Position = UDim2.new(0, 10, 0, 140)
+    bringButton.BackgroundColor3 = Color3.fromRGB(70, 120, 200)
+    bringButton.BorderSizePixel = 0
+    bringButton.Text = "TELEPORTAR"
+    bringButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    bringButton.TextSize = 14
+    bringButton.Font = Enum.Font.GothamBold
+    bringButton.AutoButtonColor = false
+    bringButton.Parent = mainFrame
+
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 8)
+    buttonCorner.Parent = bringButton
+
+    return screenGui, nickTextBox, statusLabel, bringButton
+end
+
+-- Função para encontrar player (melhorada com debug)
+local function findPlayer(partialName)
+    if not partialName or partialName == "" then
+        print("Nome vazio fornecido")
+        return nil
+    end
+    
+    partialName = string.lower(partialName)
+    print("Procurando player com nome:", partialName)
+    
+    -- Listar todos os players para debug
+    print("Players online:")
+    for _, p in pairs(Players:GetPlayers()) do
+        print("- " .. p.Name .. " (Display: " .. p.DisplayName .. ")")
+    end
+    
+    -- Primeiro tenta match exato
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        if targetPlayer ~= player then
+            local playerName = string.lower(targetPlayer.Name)
+            local displayName = string.lower(targetPlayer.DisplayName)
+            
+            if playerName == partialName or displayName == partialName then
+                print("Match exato encontrado:", targetPlayer.Name)
+                return targetPlayer
+            end
+        end
+    end
+    
+    -- Depois tenta match parcial
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        if targetPlayer ~= player then
+            local playerName = string.lower(targetPlayer.Name)
+            local displayName = string.lower(targetPlayer.DisplayName)
+            
+            if string.find(playerName, partialName, 1, true) or 
+               string.find(displayName, partialName, 1, true) then
+                print("Match parcial encontrado:", targetPlayer.Name)
+                return targetPlayer
+            end
+        end
+    end
+    
+    print("Nenhum player encontrado com esse nome")
+    return nil
+end
+
+-- Função para teleportar e girar
+local function bringPlayer(targetPlayer, statusLabel, bringButton)
+    if bringActive then return end
+    bringActive = true
+    
+    print("Iniciando teleporte para:", targetPlayer.Name)
+    
+    -- Verificar se o player atual tem character
+    if not player.Character then
+        statusLabel.Text = "Erro: Você não tem personagem ativo!"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        bringActive = false
+        return
+    end
+    
+    -- Verificar se o target tem character
+    if not targetPlayer.Character then
+        statusLabel.Text = "Erro: " .. targetPlayer.Name .. " não tem personagem ativo!"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        bringActive = false
+        return
+    end
+    
+    local character = player.Character
+    local targetCharacter = targetPlayer.Character
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local targetRootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoidRootPart then
+        statusLabel.Text = "Erro: Seu HumanoidRootPart não foi encontrado!"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        bringActive = false
+        return
+    end
+    
+    if not targetRootPart then
+        statusLabel.Text = "Erro: HumanoidRootPart do " .. targetPlayer.Name .. " não encontrado!"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        bringActive = false
+        return
+    end
+    
+    print("Characters encontrados, iniciando teleporte...")
+    
+    -- Salvar posição original
+    originalPosition = humanoidRootPart.CFrame
+    print("Posição original salva:", originalPosition)
+    
+    -- Atualizar interface
+    statusLabel.Text = "Teleportando para " .. targetPlayer.Name .. "..."
+    statusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+    bringButton.Text = "TELEPORTANDO..."
+    bringButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+    
+    -- Calcular posição embaixo dos pés do target
+    local targetPosition = targetRootPart.Position
+    local newPosition = Vector3.new(targetPosition.X, targetPosition.Y - 6, targetPosition.Z)
+    
+    print("Teleportando de:", humanoidRootPart.Position)
+    print("Para:", newPosition)
+    
+    -- Teleportar imediatamente
+    humanoidRootPart.CFrame = CFrame.new(newPosition)
+    
+    print("Teleporte executado, posição atual:", humanoidRootPart.Position)
+    
+    -- Iniciar rotação
+    spinning = true
+    local rotationSpeed = 34 -- velocidade de rotação (mudado para 34)
+    local rotationAngle = 0
+    local startTime = tick()
+    
+    spinConnection = RunService.Heartbeat:Connect(function(deltaTime)
+        if spinning and humanoidRootPart and humanoidRootPart.Parent then
+            -- Verificar se target ainda existe
+            if not targetRootPart or not targetRootPart.Parent then
+                spinning = false
+                return
+            end
+            
+            -- Manter posição grudada no target atualizada
+            local currentTargetPos = targetRootPart.Position
+            local stickPosition = Vector3.new(currentTargetPos.X, currentTargetPos.Y - 6, currentTargetPos.Z)
+            
+            -- Atualizar rotação na velocidade 34
+            rotationAngle = rotationAngle + (rotationSpeed * deltaTime * 6.28) -- 6.28 = 2π para rotações completas por segundo
+            
+            -- Aplicar posição grudada e rotação
+            humanoidRootPart.CFrame = CFrame.new(stickPosition) * CFrame.Angles(0, rotationAngle, 0)
+            
+            print("Girando na velocidade 34 - Ângulo:", math.deg(rotationAngle))
+        end
+    end)
+    
+    -- Aguardar 1 segundo
+    spawn(function()
+        wait(1)
+        
+        print("Parando rotação e voltando...")
+        
+        -- Parar rotação
+        spinning = false
+        if spinConnection then
+            spinConnection:Disconnect()
+            spinConnection = nil
+        end
+        
+        -- Voltar para posição original
+        if originalPosition and humanoidRootPart and humanoidRootPart.Parent then
+            humanoidRootPart.CFrame = originalPosition
+            print("Voltou para posição original:", humanoidRootPart.Position)
+        end
+        
+        -- Atualizar interface
+        statusLabel.Text = "Teleporte concluído!"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        bringButton.Text = "TELEPORTAR"
+        bringButton.BackgroundColor3 = Color3.fromRGB(70, 120, 200)
+        
+        bringActive = false
+        
+        -- Resetar status após 3 segundos
+        wait(3)
+        if statusLabel and statusLabel.Parent then
+            statusLabel.Text = "Pronto para teleportar"
+            statusLabel.TextColor3 = Color3.fromRGB(100, 200, 100)
+        end
+    end)
+end
+
+-- Função principal
+local function setupGUI()
+    local gui, nickTextBox, statusLabel, bringButton = createGUI()
+    
+    -- Efeito hover do botão
+    bringButton.MouseEnter:Connect(function()
+        if not bringActive then
+            bringButton.BackgroundColor3 = Color3.fromRGB(90, 140, 220)
+        end
+    end)
+    
+    bringButton.MouseLeave:Connect(function()
+        if not bringActive then
+            bringButton.BackgroundColor3 = Color3.fromRGB(70, 120, 200)
+        end
+    end)
+    
+    -- Evento do botão (CORRIGIDO)
+    bringButton.Activated:Connect(function()
+        if bringActive then return end
+        
+        local nickText = nickTextBox.Text
+        if nickText and nickText ~= "" then
+            nickText = string.gsub(nickText, "^%s*(.-)%s*$", "%1") -- Remove espaços
+        end
+        
+        if not nickText or nickText == "" then
+            statusLabel.Text = "Digite um nickname primeiro!"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+            return
+        end
+        
+        statusLabel.Text = "Procurando player..."
+        statusLabel.TextColor3 = Color3.fromRGB(100, 150, 255)
+        
+        -- Aguardar um frame para atualizar a UI
+        wait()
+        
+        local targetPlayer = findPlayer(nickText)
+        
+        if targetPlayer then
+            statusLabel.Text = "Player encontrado: " .. targetPlayer.Name
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+            
+            -- Aguardar um pouco antes de teleportar
+            spawn(function()
+                wait(0.5)
+                bringPlayer(targetPlayer, statusLabel, bringButton)
+            end)
+        else
+            statusLabel.Text = "Player não encontrado no servidor!"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            
+            -- Mostrar players online para ajudar
+            spawn(function()
+                wait(2)
+                local playerCount = #Players:GetPlayers() - 1 -- Menos o próprio player
+                statusLabel.Text = "Players online: " .. playerCount
+                statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
+            end)
+        end
+    end)
+    
+    -- Enter no TextBox executa o teleporte
+    nickTextBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed and not bringActive then
+            bringButton.Activated:Fire()
+        end
+    end)
+    
+    print("GUI de Teleporte carregada com sucesso!")
+end
+
+-- Aguardar o player estar pronto
+if player.Character then
+    setupGUI()
+else
+    player.CharacterAdded:Connect(function()
+        wait(1) -- Aguardar tudo carregar
+        setupGUI()
+    end)
+end
